@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mini Geometry Dash</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; }
+    canvas { display: block; margin: 0 auto; background: #222; border: 4px solid #ffa500; }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="800" height="400"></canvas>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    let player = { x: 50, y: 300, width: 30, height: 30, dy: 0, gravity: 0.8, jumpPower: -12, onGround: false };
+    let obstacles = [{ x: 800, y: 340, width: 30, height: 60 }];
+    let speed = 4;
+    let gameOver = false;
+
+    function drawPlayer() {
+      ctx.fillStyle = "#ffa500";
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function drawObstacles() {
+      ctx.fillStyle = "#f00";
+      obstacles.forEach(ob => {
+        ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
+      });
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Гравець
+      player.dy += player.gravity;
+      player.y += player.dy;
+      if (player.y + player.height >= canvas.height) {
+        player.y = canvas.height - player.height;
+        player.dy = 0;
+        player.onGround = true;
+      } else {
+        player.onGround = false;
+      }
+
+      // Перешкоди
+      obstacles.forEach(ob => {
+        ob.x -= speed;
+        if (ob.x + ob.width < 0) {
+          ob.x = 800 + Math.random() * 400;
+        }
+
+        // Перевірка зіткнення
+        if (
+          player.x < ob.x + ob.width &&
+          player.x + player.width > ob.x &&
+          player.y < ob.y + ob.height &&
+          player.y + player.height > ob.y
+        ) {
+          gameOver = true;
+          alert("💀 Гру завершено!");
+        }
+      });
+
+      drawPlayer();
+      drawObstacles();
+
+      requestAnimationFrame(update);
+    }
+
+    // Стрибок
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space" && player.onGround) {
+        player.dy = player.jumpPower;
+      }
+    });
+
+    update();
+  </script>
+</body>
+</html>
