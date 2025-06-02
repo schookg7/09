@@ -2,48 +2,73 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Міні Geometry Dash</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Міні Geometry Dash (Мобільна версія)</title>
   <style>
     * {
       margin: 0; padding: 0; box-sizing: border-box;
     }
-    body {
+    html, body {
+      height: 100%;
       background: #111;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
-      height: 100vh;
+      justify-content: center;
       font-family: Arial, sans-serif;
       color: #fff;
       user-select: none;
-    }
-    canvas {
-      background: #222;
-      border: 4px solid #ffa500;
-      display: block;
+      overflow: hidden;
     }
     #score {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
       font-size: 24px;
       font-weight: bold;
       color: #ffa500;
       text-shadow: 1px 1px 2px #000;
+      margin-bottom: 10px;
+    }
+    canvas {
+      background: #222;
+      border: 4px solid #ffa500;
+      width: 95vw;
+      max-width: 600px;
+      aspect-ratio: 2 / 1; /* співвідношення 2:1 для комфортного вигляду */
+      touch-action: manipulation;
+    }
+    #instructions {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #aaa;
+      text-align: center;
+      max-width: 600px;
+      user-select: none;
     }
   </style>
 </head>
 <body>
 
   <div id="score">Очки: 0</div>
-  <canvas id="game" width="800" height="400"></canvas>
+  <canvas id="game"></canvas>
+  <div id="instructions">Торкнись екрану, щоб стрибнути. Після смерті натисни R або торкнись знову, щоб почати.</div>
 
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     const scoreDisplay = document.getElementById("score");
+
+    // Підгоняємо розмір канваса під CSS
+    function resizeCanvas() {
+      const width = canvas.clientWidth;
+      canvas.width = width;
+      canvas.height = width / 2; // 2:1 співвідношення
+    }
+    resizeCanvas();
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      if (player) {
+        player.y = canvas.height - player.height;
+      }
+    });
 
     let player = {
       x: 50,
@@ -59,13 +84,12 @@
     let obstacles = [];
     let obstacleSpeed = 6;
     let spawnTimer = 0;
-    let spawnInterval = 90; // кадрів між появою перешкод
+    let spawnInterval = 90;
 
     let score = 0;
     let gameOver = false;
 
     function createObstacle() {
-      // Висота перешкоди випадкова в межах від 40 до 80 пікселів
       let height = 40 + Math.random() * 40;
       let y = canvas.height - height;
       obstacles.push({ x: canvas.width, y: y, width: 30, height: height });
@@ -80,6 +104,7 @@
       gameOver = false;
       spawnTimer = 0;
       obstacleSpeed = 6;
+      spawnInterval = 90;
       scoreDisplay.textContent = "Очки: 0";
       update();
     }
@@ -101,11 +126,9 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Гравітація і рух гравця
       player.dy += player.gravity;
       player.y += player.dy;
 
-      // Перевірка землі
       if (player.y + player.height > canvas.height) {
         player.y = canvas.height - player.height;
         player.dy = 0;
@@ -114,29 +137,21 @@
         player.onGround = false;
       }
 
-      // Рух і створення перешкод
       spawnTimer++;
       if (spawnTimer >= spawnInterval) {
         createObstacle();
         spawnTimer = 0;
-        // Зменшуємо інтервал, щоб ставало складніше
         if (spawnInterval > 40) spawnInterval -= 1;
-        // Збільшуємо швидкість перешкод
         obstacleSpeed += 0.05;
       }
 
-      // Оновлення позиції перешкод
       for (let i = obstacles.length - 1; i >= 0; i--) {
         obstacles[i].x -= obstacleSpeed;
-
-        // Видаляємо перешкоди, що вийшли за межі
         if (obstacles[i].x + obstacles[i].width < 0) {
           obstacles.splice(i, 1);
           score++;
           scoreDisplay.textContent = "Очки: " + score;
         }
-
-        // Перевірка зіткнення з гравцем
         if (
           player.x < obstacles[i].x + obstacles[i].width &&
           player.x + player.width > obstacles[i].x &&
@@ -156,16 +171,29 @@
       }
     }
 
-    // Обробка стрибка
-    window.addEventListener("keydown", e => {
-      if ((e.code === "Space" || e.code === "ArrowUp") && player.onGround && !gameOver) {
+    function jump() {
+      if (player.onGround && !gameOver) {
         player.dy = player.jumpPower;
+      } else if (gameOver) {
+        resetGame();
       }
-      // Перезапуск гри після Game Over по клавіші R
+    }
+
+    // Управління клавіатурою
+    window.addEventListener("keydown", e => {
+      if ((e.code === "Space" || e.code === "ArrowUp")) {
+        jump();
+      }
       if (e.code === "KeyR" && gameOver) {
         resetGame();
       }
     });
+
+    // Управління сенсорним екраном
+    canvas.addEventListener("touchstart", e => {
+      e.preventDefault();
+      jump();
+    }, { passive: false });
 
     // Початкові налаштування
     player.y = canvas.height - player.height;
@@ -173,5 +201,7 @@
 
     update();
   </script>
+
 </body>
-</html>
+</html> 
+
