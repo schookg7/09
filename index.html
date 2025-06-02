@@ -2,24 +2,87 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mini Geometry Dash</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Міні Geometry Dash</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #111; }
-    canvas { display: block; margin: 0 auto; background: #222; border: 4px solid #ffa500; }
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
+    body {
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      user-select: none;
+    }
+    canvas {
+      background: #222;
+      border: 4px solid #ffa500;
+      display: block;
+    }
+    #score {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffa500;
+      text-shadow: 1px 1px 2px #000;
+    }
   </style>
 </head>
 <body>
+
+  <div id="score">Очки: 0</div>
   <canvas id="game" width="800" height="400"></canvas>
+
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
 
-    let player = { x: 50, y: 300, width: 30, height: 30, dy: 0, gravity: 0.8, jumpPower: -12, onGround: false };
-    let obstacles = [{ x: 800, y: 340, width: 30, height: 60 }];
-    let speed = 4;
+    let player = {
+      x: 50,
+      y: 0,
+      width: 30,
+      height: 30,
+      dy: 0,
+      gravity: 0.8,
+      jumpPower: -14,
+      onGround: false
+    };
+
+    let obstacles = [];
+    let obstacleSpeed = 6;
+    let spawnTimer = 0;
+    let spawnInterval = 90; // кадрів між появою перешкод
+
+    let score = 0;
     let gameOver = false;
+
+    function createObstacle() {
+      // Висота перешкоди випадкова в межах від 40 до 80 пікселів
+      let height = 40 + Math.random() * 40;
+      let y = canvas.height - height;
+      obstacles.push({ x: canvas.width, y: y, width: 30, height: height });
+    }
+
+    function resetGame() {
+      obstacles = [];
+      player.y = canvas.height - player.height;
+      player.dy = 0;
+      player.onGround = true;
+      score = 0;
+      gameOver = false;
+      spawnTimer = 0;
+      obstacleSpeed = 6;
+      scoreDisplay.textContent = "Очки: 0";
+      update();
+    }
 
     function drawPlayer() {
       ctx.fillStyle = "#ffa500";
@@ -38,10 +101,12 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Гравець
+      // Гравітація і рух гравця
       player.dy += player.gravity;
       player.y += player.dy;
-      if (player.y + player.height >= canvas.height) {
+
+      // Перевірка землі
+      if (player.y + player.height > canvas.height) {
         player.y = canvas.height - player.height;
         player.dy = 0;
         player.onGround = true;
@@ -49,37 +114,62 @@
         player.onGround = false;
       }
 
-      // Перешкоди
-      obstacles.forEach(ob => {
-        ob.x -= speed;
-        if (ob.x + ob.width < 0) {
-          ob.x = 800 + Math.random() * 400;
+      // Рух і створення перешкод
+      spawnTimer++;
+      if (spawnTimer >= spawnInterval) {
+        createObstacle();
+        spawnTimer = 0;
+        // Зменшуємо інтервал, щоб ставало складніше
+        if (spawnInterval > 40) spawnInterval -= 1;
+        // Збільшуємо швидкість перешкод
+        obstacleSpeed += 0.05;
+      }
+
+      // Оновлення позиції перешкод
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].x -= obstacleSpeed;
+
+        // Видаляємо перешкоди, що вийшли за межі
+        if (obstacles[i].x + obstacles[i].width < 0) {
+          obstacles.splice(i, 1);
+          score++;
+          scoreDisplay.textContent = "Очки: " + score;
         }
 
-        // Перевірка зіткнення
+        // Перевірка зіткнення з гравцем
         if (
-          player.x < ob.x + ob.width &&
-          player.x + player.width > ob.x &&
-          player.y < ob.y + ob.height &&
-          player.y + player.height > ob.y
+          player.x < obstacles[i].x + obstacles[i].width &&
+          player.x + player.width > obstacles[i].x &&
+          player.y < obstacles[i].y + obstacles[i].height &&
+          player.y + player.height > obstacles[i].y
         ) {
           gameOver = true;
-          alert("💀 Гру завершено!");
+          setTimeout(() => alert("💀 Гру завершено! Твій рахунок: " + score), 10);
         }
-      });
+      }
 
       drawPlayer();
       drawObstacles();
 
-      requestAnimationFrame(update);
+      if (!gameOver) {
+        requestAnimationFrame(update);
+      }
     }
 
-    // Стрибок
-    document.addEventListener("keydown", e => {
-      if (e.code === "Space" && player.onGround) {
+    // Обробка стрибка
+    window.addEventListener("keydown", e => {
+      if ((e.code === "Space" || e.code === "ArrowUp") && player.onGround && !gameOver) {
         player.dy = player.jumpPower;
       }
+      // Перезапуск гри після Game Over по клавіші R
+      if (e.code === "KeyR" && gameOver) {
+        resetGame();
+      }
     });
+
+    // Початкові налаштування
+    player.y = canvas.height - player.height;
+    player.onGround = true;
 
     update();
   </script>
